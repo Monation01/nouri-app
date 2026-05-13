@@ -1,7 +1,7 @@
 // ─── NOURI APP — MAIN ROUTER ──────────────────────────────────
-import { useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AuthScreen from "./screens/AuthScreen";
+import NouriApp from "./NouriApp";
 import { logOut } from "./firebase/services";
 
 export const T = {
@@ -29,8 +29,6 @@ function AppInner(){
     </div>
   );
   if(!user) return <AuthScreen/>;
-  // Once logged in, import NouriApp dynamically
-  const NouriApp = require("./NouriApp").default;
   return <NouriApp user={user} profile={profile} onSignOut={logOut}/>;
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { logMeal, logWeight, saveOnboarding } from "./firebase/services";
 
 const T = {
   pageBg:"#F4F6F4", cardBg:"#FFFFFF", inputBg:"#F2F4F2",
@@ -519,11 +520,19 @@ function VoiceScreen({meal,onClose}){
 }
 
 /* ══ MEAL LOG SHEET ══════════════════════════════════════════ */
-function LogSheet({onClose}){
+function LogSheet({onClose,uid}){
   const [query,setQuery]=useState("");
   const [sel,setSel]=useState(null);
   const [portion,setPortion]=useState(1);
+  const [saving,setSaving]=useState(false);
   const filtered=FOODS_DB.filter(f=>f.name.toLowerCase().includes(query.toLowerCase()));
+  const handleLog=async()=>{
+    if(!sel||saving)return;
+    setSaving(true);
+    try{if(uid)await logMeal(uid,{name:sel.name,emoji:sel.emoji,kcal:Math.round(sel.kcal*portion),protein:Math.round(sel.protein*portion),portion});}catch(e){console.error(e);}
+    setSaving(false);
+    onClose();
+  };
   return(
     <Sheet onClose={onClose} maxH="92%">
       <div style={{padding:"0 22px 4px"}}>
@@ -556,7 +565,7 @@ function LogSheet({onClose}){
                 <button onClick={()=>setPortion(p=>p+0.5)} style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
               </div>
             </div>
-            <button onClick={onClose} style={{width:"100%",background:T.primaryMint,border:"none",borderRadius:12,padding:"13px",fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>✓ Log {sel.name}</button>
+            <button onClick={handleLog} disabled={saving} style={{width:"100%",background:T.primaryMint,border:"none",borderRadius:12,padding:"13px",fontSize:14,fontWeight:700,color:"#fff",cursor:saving?"default":"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{saving?"Saving…":`✓ Log ${sel.name}`}</button>
           </div>
         )}
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:280,overflowY:"auto"}}>
@@ -687,13 +696,13 @@ function HomeScreen({navigate,user,onBell,unread}){
       </div>
       <div style={{height:16}}/>
       {recipe&&<RecipeScreen meal={recipe} onClose={()=>setRecipe(null)}/>}
-      {showLog&&<LogSheet onClose={()=>setShowLog(false)}/>}
+      {showLog&&<LogSheet onClose={()=>setShowLog(false)} uid={user?.uid}/>}
     </div>
   );
 }
 
 /* ══ PLAN SCREEN ═════════════════════════════════════════════ */
-function PlanScreen(){
+function PlanScreen({uid}){
   const [activeDay,setActiveDay]=useState(0);
   const [animKey,setAnimKey]=useState(0);
   const [detailMeal,setDetailMeal]=useState(null);
@@ -842,7 +851,7 @@ function PlanScreen(){
       )}
       {recipe&&<RecipeScreen meal={recipe} onClose={()=>setRecipe(null)}/>}
       {voice&&<VoiceScreen meal={voice} onClose={()=>setVoice(null)}/>}
-      {showLog&&<LogSheet onClose={()=>setShowLog(false)}/>}
+      {showLog&&<LogSheet onClose={()=>setShowLog(false)} uid={uid}/>}
     </div>
   );
 }
@@ -1015,9 +1024,21 @@ function BudgetScreen(){
 }
 
 /* ══ PROGRESS SCREEN ═════════════════════════════════════════ */
-function ProgressScreen(){
+function ProgressScreen({uid}){
   const [tab,setTab]=useState("overview");
   const [mood,setMood]=useState(null);
+  const [showWeightInput,setShowWeightInput]=useState(false);
+  const [weightInput,setWeightInput]=useState("");
+  const [savingWeight,setSavingWeight]=useState(false);
+  const handleLogWeight=async()=>{
+    const w=parseFloat(weightInput);
+    if(!w||w<20||w>500)return;
+    setSavingWeight(true);
+    try{if(uid)await logWeight(uid,w);}catch(e){console.error(e);}
+    setSavingWeight(false);
+    setShowWeightInput(false);
+    setWeightInput("");
+  };
   const CALS=[1420,1680,1550,1700,1480,1620,1030];
   const GOAL=1650;
   const avg=Math.round(CALS.reduce((a,b)=>a+b,0)/CALS.length);
@@ -1105,7 +1126,19 @@ function ProgressScreen(){
             <div style={{height:8,background:T.inputBg,borderRadius:99,overflow:"hidden",marginBottom:6}}><PBar pct={0.41}/></div>
             <div style={{fontSize:11,color:T.textMuted}}>4.1 kg lost · 3.9 kg to go · ~6 weeks at current pace</div>
           </div>
-          <button style={{width:"100%",background:T.primary,border:"none",borderRadius:16,padding:"14px",fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Icon name="plus" size={16} color="#fff"/>Log Today's Weight</button>
+          {showWeightInput?(
+            <div style={{display:"flex",gap:8}}>
+              <input value={weightInput} onChange={e=>setWeightInput(e.target.value)} placeholder="e.g. 79.5" type="number" min="20" max="500" step="0.1"
+                style={{flex:1,padding:"13px 14px",fontSize:14,background:T.inputBg,border:`1.5px solid ${T.border}`,borderRadius:14,color:T.textDark,fontFamily:"'Plus Jakarta Sans',sans-serif",outline:"none"}}
+                onFocus={e=>e.target.style.borderColor=T.primaryMint} onBlur={e=>e.target.style.borderColor=T.border}/>
+              <button onClick={handleLogWeight} disabled={savingWeight||!weightInput}
+                style={{flex:1,background:T.primary,border:"none",borderRadius:14,padding:"13px",fontSize:14,fontWeight:700,color:"#fff",cursor:savingWeight?"default":"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                {savingWeight?"Saving…":"Save"}
+              </button>
+            </div>
+          ):(
+            <button onClick={()=>setShowWeightInput(true)} style={{width:"100%",background:T.primary,border:"none",borderRadius:16,padding:"14px",fontSize:14,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Icon name="plus" size={16} color="#fff"/>Log Today's Weight</button>
+          )}
         </div>
       )}
       {tab==="habits"&&(
@@ -1343,7 +1376,7 @@ function ChatScreen(){
     setLoading(true);
     histRef.current=[...histRef.current,{role:"user",content:msg}];
     try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:SYSTEM_PROMPT,messages:histRef.current})});
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","x-api-key":import.meta.env.VITE_ANTHROPIC_API_KEY||""},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:SYSTEM_PROMPT,messages:histRef.current})});
       const data=await res.json();
       const reply=data.content?.[0]?.text||"Sorry, couldn't respond. Try again.";
       histRef.current=[...histRef.current,{role:"assistant",content:reply}];
@@ -1753,9 +1786,10 @@ function NotificationsPanel({notifications,onClose,onMarkAllRead,setNotification
 }
 
 /* ══ ROOT APP ════════════════════════════════════════════════ */
-export default function NouriApp(){
-  const [onboarded,setOnboarded]=useState(false);
-  const [user,setUser]=useState(null);
+export default function NouriApp({ user: firebaseUser, profile, onSignOut }){
+  const uid=firebaseUser?.uid||null;
+  const [onboarded,setOnboarded]=useState(profile?.onboarded??false);
+  const [user,setUser]=useState(profile?{name:profile.name,uid}:null);
   const [screen,setScreen]=useState("home");
   const [showNotifications,setShowNotifications]=useState(false);
   const [offlineMode,setOfflineMode]=useState(false);
@@ -1792,14 +1826,18 @@ export default function NouriApp(){
         {/* App screens */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           {!onboarded?(
-            <OnboardingScreen onComplete={d=>{setUser(d);setOnboarded(true);}}/>
+            <OnboardingScreen onComplete={async d=>{
+              if(uid){try{await saveOnboarding(uid,d.answers,d.name);}catch(e){console.error(e);}}
+              setUser({name:d.name,uid});
+              setOnboarded(true);
+            }}/>
           ):(
             <>
               {screen==="home"        &&<HomeScreen        navigate={setScreen} user={user} onBell={()=>setShowNotifications(true)} unread={unread}/>}
-              {screen==="plan"        &&<PlanScreen        navigate={setScreen}/>}
+              {screen==="plan"        &&<PlanScreen        navigate={setScreen} uid={uid}/>}
               {screen==="scan"        &&<ScanScreen        navigate={setScreen}/>}
               {screen==="budget"      &&<BudgetScreen      navigate={setScreen}/>}
-              {screen==="progress"    &&<ProgressScreen    navigate={setScreen}/>}
+              {screen==="progress"    &&<ProgressScreen    navigate={setScreen} uid={uid}/>}
               {screen==="community"   &&<CommunityScreen   navigate={setScreen}/>}
               {screen==="chat"        &&<ChatScreen        navigate={setScreen}/>}
               {screen==="profile"     &&<ProfileScreen     navigate={setScreen} user={user} offlineMode={offlineMode} setOfflineMode={setOfflineMode}/>}
