@@ -33,16 +33,32 @@ export default function AuthScreen() {
         "auth/wrong-password": "Incorrect password. Try again.",
         "auth/invalid-email": "Please enter a valid email address.",
         "auth/weak-password": "Password must be at least 6 characters.",
+        "auth/operation-not-allowed": "Email/Password login is disabled in Firebase Console.",
+        "auth/invalid-credential": "Invalid email or password.",
+        "auth/too-many-requests": "Too many attempts. Please wait and try again.",
+        "auth/network-request-failed": "Network error. Check your internet and try again.",
       };
-      setError(msgs[e.code] || "Something went wrong. Please try again.");
+      const code = e?.code || "unknown";
+      setError(msgs[code] || `Authentication failed (${code}).`);
     }
     setLoading(false);
   };
 
   const handleGoogle = async () => {
+    setError("");
     setLoading(true);
     try { await signInWithGoogle(); }
-    catch { setError("Google sign-in failed. Please try again."); }
+    catch (e) {
+      const msgs = {
+        "auth/operation-not-allowed": "Google sign-in is disabled in Firebase Console.",
+        "auth/unauthorized-domain": "This domain is not authorized for Firebase Auth.",
+        "auth/popup-blocked": "Popup was blocked by your browser. Allow popups and retry.",
+        "auth/popup-closed-by-user": "Google popup was closed before sign-in completed.",
+        "auth/network-request-failed": "Network error. Check your internet and try again.",
+      };
+      const code = e?.code || "unknown";
+      setError(msgs[code] || `Google sign-in failed (${code}).`);
+    }
     setLoading(false);
   };
 
