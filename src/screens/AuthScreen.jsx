@@ -33,6 +33,8 @@ export default function AuthScreen() {
         "auth/wrong-password": "Incorrect password. Try again.",
         "auth/invalid-email": "Please enter a valid email address.",
         "auth/weak-password": "Password must be at least 6 characters.",
+        "auth/invalid-api-key": "Firebase API key is invalid. Update VITE_FIREBASE_API_KEY in .env.",
+        "auth/api-key-not-valid.-please-pass-a-valid-api-key.": "Firebase API key is invalid. Update VITE_FIREBASE_API_KEY in .env.",
         "auth/operation-not-allowed": "Email/Password login is disabled in Firebase Console.",
         "auth/invalid-credential": "Invalid email or password.",
         "auth/too-many-requests": "Too many attempts. Please wait and try again.",
@@ -50,6 +52,8 @@ export default function AuthScreen() {
     try { await signInWithGoogle(); }
     catch (e) {
       const msgs = {
+        "auth/invalid-api-key": "Firebase API key is invalid. Update VITE_FIREBASE_API_KEY in .env.",
+        "auth/api-key-not-valid.-please-pass-a-valid-api-key.": "Firebase API key is invalid. Update VITE_FIREBASE_API_KEY in .env.",
         "auth/operation-not-allowed": "Google sign-in is disabled in Firebase Console.",
         "auth/unauthorized-domain": "This domain is not authorized for Firebase Auth.",
         "auth/popup-blocked": "Popup was blocked by your browser. Allow popups and retry.",
